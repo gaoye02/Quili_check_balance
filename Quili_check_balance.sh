@@ -18,6 +18,10 @@ PREVIOUS_BALANCE=$(extract_balance)
 TIMESTAMP=$(date "+%Y-%m-%d %H:%M:%S")
 echo "[$TIMESTAMP] 当前余额: $PREVIOUS_BALANCE QUIL" | tee -a $OUTPUT_FILE
 
+# 初始化24小时余额记录
+BALANCE_24H_AGO=$PREVIOUS_BALANCE
+START_TIME=$(date +%s)
+
 # 无限循环，每小时查询一次
 while true; do
     # 获取当前时间
@@ -36,9 +40,25 @@ while true; do
         
         # 更新上一个余额
         PREVIOUS_BALANCE=$CURRENT_BALANCE
+        
+        # 计算24小时的产量
+        CURRENT_TIME=$(date +%s)
+        ELAPSED_TIME=$((CURRENT_TIME - START_TIME))
+        if [ $ELAPSED_TIME -ge 86400 ]; then # 86400秒 = 24小时
+            # 计算24小时内的产量
+            PRODUCTION_24H=$(echo "$CURRENT_BALANCE - $BALANCE_24H_AGO" | bc)
+            
+            # 打印24小时产量
+            echo "[$TIMESTAMP] 过去24小时产量: $PRODUCTION_24H QUIL" | tee -a $OUTPUT_FILE
+            
+            # 更新24小时余额记录和开始时间
+            BALANCE_24H_AGO=$CURRENT_BALANCE
+            START_TIME=$CURRENT_TIME
+        fi
     else
         echo "[$TIMESTAMP] 提取余额失败，当前余额: $CURRENT_BALANCE" | tee -a $OUTPUT_FILE
     fi 
+    
     # 等待1小时
     sleep 3600
 done
